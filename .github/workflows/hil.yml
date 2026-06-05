@@ -18,8 +18,7 @@ jobs:
               device-tree-compiler wget python3-pip python3-setuptools python3-wheel
 
       - name: Install West
-        run: |
-          pip3 install west
+        run: pip3 install west
 
       - name: Create Zephyr workspace
         run: |
@@ -45,7 +44,7 @@ jobs:
           echo "${{ secrets.PI_SSH_KEY }}" > key
           chmod 600 key
 
-      - name: Provision Pi HIL directory
+      - name: Create HIL directory on Pi
         run: |
           ssh -i key -o StrictHostKeyChecking=no \
             ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
@@ -53,34 +52,21 @@ jobs:
 
       - name: Upload flash script
         run: |
-          cat << 'EOF' > flash.sh
-#!/bin/bash
-set -e
-LOG=/home/kris/hil/flash.log
-
-echo "Flashing firmware..." | tee $LOG
-
-openocd -f interface/stlink.cfg \
-        -f target/stm32f4x.cfg \
-        -c "program /home/kris/hil/firmware.bin verify reset exit" | tee -a $LOG
-
-echo "Done." | tee -a $LOG
-EOF
-
-          scp -i key -o StrictHostKeyChecking=no flash.sh \
+          scp -i key -o StrictHostKeyChecking=no \
+            hil/flash.sh \
             ${{ secrets.PI_USER }}@${{ secrets.PI_IP }}:/home/kris/hil/flash.sh
 
           ssh -i key -o StrictHostKeyChecking=no \
             ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
             "chmod +x /home/kris/hil/flash.sh"
 
-      - name: Upload firmware to Pi Zero W
+      - name: Upload firmware
         run: |
           scp -i key -o StrictHostKeyChecking=no \
             zephyrproject/build/zephyr/zephyr.bin \
             ${{ secrets.PI_USER }}@${{ secrets.PI_IP }}:/home/kris/hil/firmware.bin
 
-      - name: Flash firmware on Pi Zero W
+      - name: Flash firmware
         run: |
           ssh -i key -o StrictHostKeyChecking=no \
             ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
