@@ -18,6 +18,7 @@ jobs:
       - name: Build firmware inside container
         run: |
           docker run --rm \
+            -u root \
             -v ${{ github.workspace }}:/work \
             -w /work \
             ghcr.io/zephyrproject-rtos/zephyr-build:latest \
@@ -26,7 +27,7 @@ jobs:
               west init -m https://github.com/zephyrproject-rtos/zephyr --mr v3.5.0 &&
               west update &&
               west build -b nucleo_f411re app
-            "
+              "
 
       - name: Prepare SSH key
         run: |
