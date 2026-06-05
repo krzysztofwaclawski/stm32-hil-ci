@@ -1,25 +1,55 @@
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y cmake ninja-build gperf ccache dfu-util \
-            device-tree-compiler wget python3-pip python3-setuptools python3-wheel
+name: Minimal HIL Flash
 
-    - name: Install West
-      run: |
-        pip3 install west
+on:
+  workflow_dispatch:
 
-    - name: Initialize Zephyr workspace
-      run: |
-        west init -l .
-        west update
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-    - name: Install Zephyr SDK
-      run: |
-        wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/zephyr-sdk-0.16.5_linux-x86_64.tar.xz
-        tar xf zephyr-sdk-0.16.5_linux-x86_64.tar.xz
-        sudo mv zephyr-sdk-0.16.5 /opt/zephyr-sdk
-        /opt/zephyr-sdk/setup.sh -t arm-zephyr-eabi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Build firmware
-      run: |
-        west build -b nucleo_f411re app/
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake ninja-build gperf ccache dfu-util \
+              device-tree-compiler wget python3-pip python3-setuptools python3-wheel
+
+      - name: Install West
+        run: |
+          pip3 install west
+
+      - name: Initialize Zephyr workspace
+        run: |
+          west init -l .
+          west update
+
+      - name: Install Zephyr SDK
+        run: |
+          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/zephyr-sdk-0.16.5_linux-x86_64.tar.xz
+          tar xf zephyr-sdk-0.16.5_linux-x86_64.tar.xz
+          sudo mv zephyr-sdk-0.16.5 /opt/zephyr-sdk
+          /opt/zephyr-sdk/setup.sh -t arm-zephyr-eabi
+
+      - name: Build firmware
+        run: |
+          west build -b nucleo_f411re app/
+
+      - name: Prepare SSH key
+        run: |
+          echo "${{ secrets.PI_SSH_KEY }}" > key
+          chmod 600 key
+
+      - name: Copy firmware to Pi Zero W
+        run: |
+          scp -i key -o StrictHostKeyChecking=no \
+            build/zephyr/zephyr.bin \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_IP }}:/home/kris/hil/firmware.bin
+
+      - name: Flash firmware on Pi Zero W
+        run: |
+          ssh -i key -o StrictHostKeyChecking=no \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
+            "/home/kris/hil/flash.sh"
