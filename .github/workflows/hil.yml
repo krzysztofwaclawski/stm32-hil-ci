@@ -24,7 +24,7 @@ jobs:
         run: |
           mkdir zephyrproject
           cd zephyrproject
-          west init
+          west init -m https://github.com/zephyrproject-rtos/zephyr --mr v3.5.0
           west update
 
       - name: Install Zephyr SDK
