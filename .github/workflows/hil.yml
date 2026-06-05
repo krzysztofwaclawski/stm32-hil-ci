@@ -38,14 +38,43 @@ jobs:
       - name: Build firmware
         run: |
           cd zephyrproject
-          west build -b nucleo_f411re ../app
+          west build -b nucleo_f411re ..
 
       - name: Prepare SSH key
         run: |
           echo "${{ secrets.PI_SSH_KEY }}" > key
           chmod 600 key
 
-      - name: Copy firmware to Pi Zero W
+      - name: Provision Pi HIL directory
+        run: |
+          ssh -i key -o StrictHostKeyChecking=no \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
+            "mkdir -p /home/kris/hil"
+
+      - name: Upload flash script
+        run: |
+          cat << 'EOF' > flash.sh
+#!/bin/bash
+set -e
+LOG=/home/kris/hil/flash.log
+
+echo "Flashing firmware..." | tee $LOG
+
+openocd -f interface/stlink.cfg \
+        -f target/stm32f4x.cfg \
+        -c "program /home/kris/hil/firmware.bin verify reset exit" | tee -a $LOG
+
+echo "Done." | tee -a $LOG
+EOF
+
+          scp -i key -o StrictHostKeyChecking=no flash.sh \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_IP }}:/home/kris/hil/flash.sh
+
+          ssh -i key -o StrictHostKeyChecking=no \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
+            "chmod +x /home/kris/hil/flash.sh"
+
+      - name: Upload firmware to Pi Zero W
         run: |
           scp -i key -o StrictHostKeyChecking=no \
             zephyrproject/build/zephyr/zephyr.bin \
