@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install dependencies
@@ -21,9 +21,11 @@ jobs:
         run: |
           pip3 install west
 
-      - name: Initialize Zephyr workspace
+      - name: Create Zephyr workspace
         run: |
-          west init -l .
+          mkdir zephyrproject
+          cd zephyrproject
+          west init
           west update
 
       - name: Install Zephyr SDK
@@ -35,7 +37,8 @@ jobs:
 
       - name: Build firmware
         run: |
-          west build -b nucleo_f411re app/
+          cd zephyrproject
+          west build -b nucleo_f411re ../app
 
       - name: Prepare SSH key
         run: |
@@ -45,7 +48,7 @@ jobs:
       - name: Copy firmware to Pi Zero W
         run: |
           scp -i key -o StrictHostKeyChecking=no \
-            build/zephyr/zephyr.bin \
+            zephyrproject/build/zephyr/zephyr.bin \
             ${{ secrets.PI_USER }}@${{ secrets.PI_IP }}:/home/kris/hil/firmware.bin
 
       - name: Flash firmware on Pi Zero W
