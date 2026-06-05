@@ -1,0 +1,38 @@
+name: Minimal HIL Flash
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install Zephyr SDK
+      uses: zephyrproject-rtos/action-zephyr-sdk@v1
+
+    - name: Build firmware
+      run: |
+        west init -l .
+        west update
+        west build -b nucleo_f411re app/
+
+    - name: Prepare SSH key
+      run: |
+        echo "${{ secrets.PI_SSH_KEY }}" > key
+        chmod 600 key
+
+    - name: Copy firmware to Pi Zero W
+      run: |
+        scp -i key -o StrictHostKeyChecking=no \
+          build/zephyr/zephyr.bin \
+          ${{ secrets.PI_USER }}@${{ secrets.PI_IP }}:/home/kris/hil/firmware.bin
+
+    - name: Flash firmware on Pi Zero W
+      run: |
+        ssh -i key -o StrictHostKeyChecking=no \
+          ${{ secrets.PI_USER }}@${{ secrets.PI_IP }} \
+          "/home/kris/hil/flash.sh"
