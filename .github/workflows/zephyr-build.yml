@@ -8,6 +8,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Free Disk Space for Large Docker Image
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          
+          # Remove massive pre-installed toolchains we don't need
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          
+          # Clean up apt caches and docker system data
+          sudo apt-get clean
+          docker system prune -af --volumes
+          
+          echo "=== Disk space after cleanup ==="
+          df -h
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -22,7 +40,7 @@ jobs:
             -w /work \
             ghcr.io/zephyrproject-rtos/zephyr-build:latest \
             -c "
-              # 1. Initialize Zephyr workspace targeting the official manifest repository
+              # 1. Initialize Zephyr manifest workspace in a clean subdirectory
               west init -m https://github.com/zephyrproject-rtos/zephyr --mr main zephyr-project &&
               cd zephyr-project &&
               
@@ -32,8 +50,6 @@ jobs:
               # 3. Compile the blinky sample for your target board
               west build -b nucleo_f030r8 zephyr/samples/basic/blinky --pristine
               "
-
-
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
