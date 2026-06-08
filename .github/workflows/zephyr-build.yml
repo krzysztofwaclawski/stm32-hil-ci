@@ -63,6 +63,6 @@ jobs:
       - name: Trigger Local Webhook
         if: success()
         run: |
-          curl -X POST http://YOUR_LOCAL_IP:5000/webhook \
+          curl -X POST "${{ secrets.WEBHOOK_URL }}/webhook" \
             -H "Content-Type: application/json" \
             -d "{\"repo\": \"${{ github.repository }}\", \"run_id\": \"${{ github.run_id }}\"}"
