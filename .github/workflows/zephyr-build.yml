@@ -17,20 +17,22 @@ jobs:
         run: |
           docker run --rm \
             -u root \
+            --entrypoint /bin/bash \
             -v ${{ github.workspace }}:/work \
             -w /work \
             ghcr.io/zephyrproject-rtos/zephyr-build:latest \
-            bash -c "
-              # 1. Initialize Zephyr manifest workspace in a clean subdirectory
-              west init -m https://github.com --mr main zephyr-project &&
+            -c "
+              # 1. Initialize Zephyr workspace targeting the official manifest repository
+              west init -m https://github.com/zephyrproject-rtos/zephyr --mr main zephyr-project &&
               cd zephyr-project &&
               
-              # 2. Synchronize all required project dependencies
+              # 2. Synchronize required project dependencies
               west update --narrow --fetch-opt=--depth=1 &&
               
               # 3. Compile the blinky sample for your target board
               west build -b nucleo_f030r8 zephyr/samples/basic/blinky --pristine
               "
+
 
 
       - name: Upload Build Artifacts
