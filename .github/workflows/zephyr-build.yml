@@ -6,34 +6,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Run the entire job inside the official Zephyr container instead of running slow custom docker commands
     container:
       image: ghcr.io/zephyrproject-rtos/zephyr-build:latest
       options: --user root
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          path: app # Places your source directory files inside an isolated 'app' subfolder
-
-      - name: Initialize West Workspace
+      - name: Replicate Local Zephyr Workspace Layout
         run: |
-          west init -m app
+          # 1. Initialize the cloud workspace pointing directly to the official upstream Zephyr mirror
+          west init -m https://github.com --mr main workspace
+          cd workspace
+          
+          # 2. Pull down the core hardware abstraction layers and system frameworks
           west update
-
-      - name: Build Firmware Inside Container
-        run: |
-          # Targeting your exact nucleo_f030r8 board combined with the required C-04 12MHz hardware clock flag
-          west build -b nucleo_f030r8/stm32f030x8 app --pristine -- -DCONFIG_STM32_HSE_BYPASS_CLOCK=12000000
+          
+          # 3. Build the standard built-in Blinky sample with your C-04 12MHz hardware clock override
+          west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine -- -DCONFIG_STM32_HSE_BYPASS_CLOCK=12000000
 
       - name: Upload Flashable Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: zephyr-hex-artifact
           path: |
-            build/zephyr/zephyr.hex
-            build/zephyr/zephyr.bin
-            build/zephyr/zephyr.elf
+            workspace/build/zephyr/zephyr.hex
+            workspace/build/zephyr/zephyr.bin
+            workspace/build/zephyr/zephyr.elf
           if-no-files-found: error
           retention-days: 7
