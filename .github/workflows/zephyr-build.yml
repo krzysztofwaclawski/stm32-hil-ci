@@ -13,14 +13,18 @@ jobs:
     steps:
       - name: Replicate Local Zephyr Workspace Layout
         run: |
-          # 1. Initialize the cloud workspace pointing directly to the official upstream Zephyr mirror
-          west init -m https://github.com --mr main workspace
+          # Force Git to use standard HTTPS instead of SSH protocols inside the container
+          git config --global url."https://github.com/".insteadOf git@github.com:
+          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+          
+          # Initialize the workspace using a shallow clone (depth 1) to prevent protocol timeouts
+          west init -m https://github.com --mr main --depth 1 workspace
           cd workspace
           
-          # 2. Pull down the core hardware abstraction layers and system frameworks
-          west update
+          # Pull down the core hardware abstraction layers and system frameworks
+          west update --narrow --retry 3
           
-          # 3. Build the standard built-in Blinky sample with your C-04 12MHz hardware clock override
+          # Build the standard built-in Blinky sample with your C-04 12MHz hardware clock override
           west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine -- -DCONFIG_STM32_HSE_BYPASS_CLOCK=12000000
 
       - name: Upload Flashable Artifacts
