@@ -1,39 +1,37 @@
-name: Minimal HIL Flash
+name: Build Zephyr Blinky
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/zephyrproject-rtos/zephyr-build:latest
-      options: --user root
+      image: ghcr.io/zephyrproject-rtos/ci:v0.27.4  # Matches Zephyr's official SDK environment
 
     steps:
-      - name: Replicate Local Zephyr Workspace Layout
-        run: |
-          # Force Git to use standard HTTPS instead of SSH protocols inside the container
-          git config --global url."https://github.com".insteadOf git@github.com:
-          git config --global url."https://github.com".insteadOf ssh://git@://github.com
-          
-          # CORRECTED: Pointing exactly to the Zephyr core manifest repository location
-          west init -m https://github.comzephyrproject-rtos/zephyr --mr main --depth 1 workspace
-          cd workspace
-          
-          # Pull down the core hardware abstraction layers and system frameworks
-          west update --narrow --retry 3
-          
-          # Build the standard built-in Blinky sample with your C-04 12MHz hardware clock override
-          west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine -- -DCONFIG_STM32_HSE_BYPASS_CLOCK=12000000
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: app
 
-      - name: Upload Flashable Artifacts
+      - name: Initialize West workspace
+        run: |
+          west init -m https://github.com --mr main zephyrproject
+          cd zephyrproject
+          west update
+          west zephyr-export
+
+      - name: Build Blinky Sample
+        run: |
+          cd zephyrproject
+          west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: zephyr-hex-artifact
-          path: |
-            workspace/build/zephyr/zephyr.hex
-            workspace/build/zephyr/zephyr.bin
-            workspace/build/zephyr/zephyr.elf
-          if-no-files-found: error
-          retention-days: 7
+          name: blinky-nucleo-firmware
+          path: zephyrproject/build/zephyr/zephyr.bin
