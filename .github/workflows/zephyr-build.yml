@@ -16,6 +16,7 @@ jobs:
       - name: Build firmware inside container
         run: |
           docker run --rm \
+            -u root \
             -v ${{ github.workspace }}:/work \
             -w /work \
             ghcr.io/zephyrproject-rtos/zephyr-build:latest \
@@ -24,15 +25,13 @@ jobs:
               west init -m https://github.com --mr main zephyr-project &&
               cd zephyr-project &&
               
-              # TBD 2. Inject your checked-out repository code into the application structure if needed
-              # cp -r /work/main-repo /work/zephyr-project/your-app-path
-              
-              # 3. Synchronize all required project dependencies
+              # 2. Synchronize all required project dependencies
               west update --narrow --fetch-opt=--depth=1 &&
               
-              # 4. Compile the blinky sample for your target board
+              # 3. Compile the blinky sample for your target board
               west build -b nucleo_f030r8 zephyr/samples/basic/blinky --pristine
               "
+
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
