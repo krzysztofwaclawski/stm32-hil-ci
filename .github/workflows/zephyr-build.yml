@@ -10,29 +10,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Pull Zephyr build container
-        run: |
-          docker pull ghcr.io/zephyrproject-rtos/zephyr-build:latest
+        with:
+          path: main-repo
 
       - name: Build firmware inside container
         run: |
           docker run --rm \
-            -u root \
             -v ${{ github.workspace }}:/work \
             -w /work \
             ghcr.io/zephyrproject-rtos/zephyr-build:latest \
             bash -c "
-              pip install pyelftools &&
+              # 1. Initialize Zephyr manifest workspace in a clean subdirectory
+              west init -m https://github.com --mr main zephyr-project &&
+              cd zephyr-project &&
               
-              # 1. Initialize the workspace cleanly without invalid arguments
-              west init -m https://github.com --mr main &&
+              # TBD 2. Inject your checked-out repository code into the application structure if needed
+              # cp -r /work/main-repo /work/zephyr-project/your-app-path
               
-              # 2. Speed optimization: shallow clone only the required STM32 modules
-              west update --narrow --fetch-opt=--depth=1 cmsis hal_stm32 &&
+              # 3. Synchronize all required project dependencies
+              west update --narrow --fetch-opt=--depth=1 &&
               
-              # 3. Compile the blinky sample for your target
-              west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine
+              # 4. Compile the blinky sample for your target board
+              west build -b nucleo_f030r8 zephyr/samples/basic/blinky --pristine
               "
 
       - name: Upload Build Artifacts
@@ -40,8 +39,8 @@ jobs:
         with:
           name: nucleo-f030r8-blinky-bin
           path: |
-            ${{ github.workspace }}/build/zephyr/zephyr.bin
-            ${{ github.workspace }}/build/zephyr/zephyr.elf
+            ${{ github.workspace }}/zephyr-project/build/zephyr/zephyr.bin
+            ${{ github.workspace }}/zephyr-project/build/zephyr/zephyr.elf
           if-no-files-found: error
 
       - name: Trigger Local Webhook
@@ -49,4 +48,4 @@ jobs:
         run: |
           curl -X POST http://YOUR_LOCAL_IP:5000/webhook \
             -H "Content-Type: application/json" \
-            -d '{"repo": "${{ github.repository }}", "run_id": "${{ github.run_id }}"}'
+            -d "{\"repo\": \"${{ github.repository }}\", \"run_id\": \"${{ github.run_id }}\"}"
