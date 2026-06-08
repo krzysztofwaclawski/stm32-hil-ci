@@ -24,8 +24,14 @@ jobs:
             ghcr.io/zephyrproject-rtos/zephyr-build:latest \
             bash -c "
               pip install pyelftools &&
-              west init -m https://github.com/zephyrproject-rtos/zephyr --mr main &&
-              west update &&
+              
+              # 1. Initialize manifest without pulling history (--depth 1)
+              west init -m https://github.com --mr main --depth 1 &&
+              
+              # 2. Only fetch the core Zephyr repository, STM32 HALs, and CMSIS
+              west update --narrow --depth 1 cmsis hal_stm32 &&
+              
+              # 3. Build the application
               west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine
               "
 
