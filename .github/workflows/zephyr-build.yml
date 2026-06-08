@@ -1,37 +1,39 @@
-name: Build Zephyr Blinky
+name: Minimal HIL Flash
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.27.4  # Matches Zephyr's official SDK environment
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: app
 
-      - name: Initialize West workspace
+      - name: Pull Zephyr build container
         run: |
-          west init -m https://github.com --mr main zephyrproject
-          cd zephyrproject
-          west update
-          west zephyr-export
+          docker pull ghcr.io/zephyrproject-rtos/zephyr-build:latest
 
-      - name: Build Blinky Sample
+      - name: Build firmware inside container
         run: |
-          cd zephyrproject
-          west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine
+          docker run --rm \
+            -u root \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
+            ghcr.io/zephyrproject-rtos/zephyr-build:latest \
+            bash -c "
+              pip install pyelftools &&
+              west init -m https://github.com/zephyrproject-rtos/zephyr --mr main &&
+              west update &&
+              west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine
+              "
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: blinky-nucleo-firmware
-          path: zephyrproject/build/zephyr/zephyr.bin
+          name: nucleo-f030r8-blinky-bin
+          path: |
+            ${{ github.workspace }}/build/zephyr/zephyr.bin
+            ${{ github.workspace }}/build/zephyr/zephyr.elf
+          if-no-files-found: error
