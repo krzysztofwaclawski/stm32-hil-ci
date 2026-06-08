@@ -14,11 +14,11 @@ jobs:
       - name: Replicate Local Zephyr Workspace Layout
         run: |
           # Force Git to use standard HTTPS instead of SSH protocols inside the container
-          git config --global url."https://github.com/".insteadOf git@github.com:
-          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global url."https://github.com".insteadOf git@github.com:
+          git config --global url."https://github.com".insteadOf ssh://git@://github.com
           
-          # Initialize the workspace using a shallow clone (depth 1) to prevent protocol timeouts
-          west init -m https://github.com --mr main --depth 1 workspace
+          # CORRECTED: Pointing exactly to the Zephyr core manifest repository location
+          west init -m https://github.comzephyrproject-rtos/zephyr --mr main --depth 1 workspace
           cd workspace
           
           # Pull down the core hardware abstraction layers and system frameworks
