@@ -25,13 +25,13 @@ jobs:
             bash -c "
               pip install pyelftools &&
               
-              # 1. Initialize manifest without pulling history (--depth 1)
-              west init -m https://github.com --mr main --depth 1 &&
+              # 1. Initialize the workspace cleanly without invalid arguments
+              west init -m https://github.com --mr main &&
               
-              # 2. Only fetch the core Zephyr repository, STM32 HALs, and CMSIS
-              west update --narrow --depth 1 cmsis hal_stm32 &&
+              # 2. Speed optimization: shallow clone only the required STM32 modules
+              west update --narrow --fetch-opt=--depth=1 cmsis hal_stm32 &&
               
-              # 3. Build the application
+              # 3. Compile the blinky sample for your target
               west build -b nucleo_f030r8/stm32f030x8 zephyr/samples/basic/blinky --pristine
               "
 
@@ -43,3 +43,10 @@ jobs:
             ${{ github.workspace }}/build/zephyr/zephyr.bin
             ${{ github.workspace }}/build/zephyr/zephyr.elf
           if-no-files-found: error
+
+      - name: Trigger Local Webhook
+        if: success()
+        run: |
+          curl -X POST http://YOUR_LOCAL_IP:5000/webhook \
+            -H "Content-Type: application/json" \
+            -d '{"repo": "${{ github.repository }}", "run_id": "${{ github.run_id }}"}'
